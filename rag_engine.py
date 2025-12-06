@@ -155,8 +155,8 @@ def user_input(user_question, vector_store):
     print(f"DEBUG: Querying '{user_question}'")
     
     # Retry mechanism for API timeouts (504 errors)
-    max_retries = 3
-    retry_delay = 2
+    max_retries = 5
+    retry_delay = 5
 
     docs = []
     for attempt in range(max_retries):
