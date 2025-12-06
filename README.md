@@ -67,11 +67,19 @@ Most RAG systems fail when extracting data from poorly formatted PDF tables (e.g
 
 ## 💻 Tech Stack
 
-*   **LLM:** Google Gemini 1.5 Flash (via `langchain-google-genai`)
-*   **Vector Store:** ChromaDB (Persistent)
-*   **Framework:** LangChain & Streamlit
-*   **Data Processing:** PyPDF
-*   **Language:** Python 3.10+
+## 💻 Unique Tech Stack & Architecture
+
+What makes RAGdocQA effective is not just the tools used, but **how** they are orchestrated to handle unstructured data.
+
+| Component | Technology | Why it's Unique/Effective |
+| :--- | :--- | :--- |
+| **LLM Engine** | **Google Gemini 1.5 Flash** | Chosen for its massive context window and speed. **Why:** Standard LLMs hallucinate on messy data. Gemini 1.5's reasoning capabilities allow us to instruct it to *reconstruct* broken tables rather than just summarizing them. |
+| **Embeddings** | **Google Generative AI** (`text-embedding-004`) | High-dimensional semantic vectors. **Why:** It captures the *meaning* of a "cutoff rank" even if the number is surrounded by garbage characters like `-- --`, allowing strict retrieval accuracy. |
+| **Vector DB** | **ChromaDB** (Persistent) | Local, persistent storage. **Why:** Unlike in-memory databases, this allows us to "build once, query forever." We decoupled the expensive "Training" phase from the "Inference" phase, making the app instant-load. |
+| **Framework** | **LangChain** | The orchestration layer. **Why:** Used to build the "Conversational Retrieval Chain" which manages context injection. We heavily customized the **Prompt Templates** within LangChain to enforce strict Markdown formatting on the output. |
+| **Frontend** | **Streamlit** | Rapid UI Framework. **Why:** Enabled us to build a hybrid interface that supports both Sidebar Uploads (for new data) and Instant Chat (for existing data), with custom "Source Document" expanders for transparency. |
+| **Processing** | **PyPDF** + Recursive Chunking | Text extraction. **Why:** We intentionally use a `RecursiveCharacterTextSplitter` with a specific chunk size (2000) and overlap (200). This "Goldilocks" zone ensures we capture full rows of a data table without splitting a college name from its cutoff rank. |
+
 
 ---
 
