@@ -4,6 +4,10 @@ from dotenv import load_dotenv
 import os
 
 load_dotenv()
+import streamlit as st
+
+if "GOOGLE_API_KEY" in st.secrets:
+    os.environ["GOOGLE_API_KEY"] = st.secrets["GOOGLE_API_KEY"]
 
 def main():
     st.set_page_config("RAGdocQA")
