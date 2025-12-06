@@ -4,7 +4,6 @@ from dotenv import load_dotenv
 import os
 
 load_dotenv()
-import streamlit as st
 
 if "GOOGLE_API_KEY" in st.secrets:
     os.environ["GOOGLE_API_KEY"] = st.secrets["GOOGLE_API_KEY"]
@@ -31,21 +30,31 @@ def main():
             st.error("Vector Store not found. Please run `python build_db.py` to build the database first.")
 
 
+    # API Key Validation
+    api_key = os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        st.error("⚠️ GOOGLE_API_KEY is missing! Please verify your Streamlit Secrets or .env file.")
+        st.stop()
+        
     user_question = st.text_input("Ask a Question from the PDF Files")
 
     if user_question:
         if "vector_store" in st.session_state:
-            response, docs = user_input(user_question, st.session_state.vector_store)
-            st.markdown("### Reply:")
-            st.markdown(response)
-            
-            with st.expander("View Source Documents"):
-                for i, doc in enumerate(docs):
-                    st.markdown(f"**Source {i+1}**")
-                    st.write(doc.page_content)
-                    st.divider()
-            st.session_state.chat_history.append(("User", user_question))
-            st.session_state.chat_history.append(("Bot", response))
+            try:
+                response, docs = user_input(user_question, st.session_state.vector_store)
+                st.markdown("### Reply:")
+                st.markdown(response)
+                
+                with st.expander("View Source Documents"):
+                    for i, doc in enumerate(docs):
+                        st.markdown(f"**Source {i+1}**")
+                        st.write(doc.page_content)
+                        st.divider()
+                st.session_state.chat_history.append(("User", user_question))
+                st.session_state.chat_history.append(("Bot", response))
+            except Exception as e:
+                st.error(f"❌ Error during processing: {str(e)}")
+                st.write("Debug Details:", e)
         else:
             st.error("Knowledge base is empty. Please upload a PDF or add files to the 'data/' folder.")
 
