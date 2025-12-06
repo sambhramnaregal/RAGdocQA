@@ -153,16 +153,44 @@ def get_conversational_chain():
 # ------------------------------
 def user_input(user_question, vector_store):
     print(f"DEBUG: Querying '{user_question}'")
-    docs = vector_store.similarity_search(user_question)
+    
+    # Retry mechanism for API timeouts (504 errors)
+    max_retries = 3
+    retry_delay = 2
+
+    docs = []
+    for attempt in range(max_retries):
+        try:
+            docs = vector_store.similarity_search(user_question)
+            break
+        except Exception as e:
+            print(f"DEBUG: similarity_search attempt {attempt+1} failed: {e}")
+            if attempt < max_retries - 1:
+                time.sleep(retry_delay * (attempt + 1))
+            else:
+                # If all retries fail, re-raise the last exception
+                raise e
+
     print(f"DEBUG: Found {len(docs)} documents")
     if docs:
         print(f"DEBUG: Top Doc: {docs[0].page_content[:200]}...")
     
     chain = get_conversational_chain()
 
-    response = chain(
-        {"input_documents": docs, "question": user_question},
-        return_only_outputs=True
-    )
+    # Retry mechanism for LLM generation
+    response = None
+    for attempt in range(max_retries):
+        try:
+            response = chain(
+                {"input_documents": docs, "question": user_question},
+                return_only_outputs=True
+            )
+            break
+        except Exception as e:
+            print(f"DEBUG: chain invocation attempt {attempt+1} failed: {e}")
+            if attempt < max_retries - 1:
+                time.sleep(retry_delay * (attempt + 1))
+            else:
+                raise e
 
     return response["output_text"], docs
