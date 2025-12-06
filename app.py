@@ -12,35 +12,34 @@ def main():
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
     
+    # Cache the loading of the vector store to improve performance
+    @st.cache_resource
+    def load_cached_vector_store():
+        return load_vector_store()
+
     # Try to load existing vector store if not already loaded
     if "vector_store" not in st.session_state:
-        persisted_store = load_vector_store()
+        persisted_store = load_cached_vector_store()
         if persisted_store:
             st.session_state.vector_store = persisted_store
             # st.success("Loaded existing knowledge base from disk.")
         else:
-            # If no persisted store, check for data/ files and process them automatically
-            data_dir = "data"
-            static_files = []
-            if os.path.exists(data_dir):
-                for file in os.listdir(data_dir):
-                    if file.endswith(".pdf"):
-                        static_files.append(os.path.join(data_dir, file))
-            
-            if static_files:
-                with st.spinner("Processing..."):
-                    raw_text = get_pdf_text(static_files)
-                    text_chunks = get_text_chunks(raw_text)
-                    vector_store = get_vector_store(text_chunks)
-                    st.session_state.vector_store = vector_store
-                    # st.success("Knowledge base initialized from static files.")
+            st.error("Vector Store not found. Please run `python build_db.py` to build the database first.")
+
 
     user_question = st.text_input("Ask a Question from the PDF Files")
 
     if user_question:
         if "vector_store" in st.session_state:
-            response = user_input(user_question, st.session_state.vector_store)
-            st.write("Reply: ", response)
+            response, docs = user_input(user_question, st.session_state.vector_store)
+            st.markdown("### Reply:")
+            st.markdown(response)
+            
+            with st.expander("View Source Documents"):
+                for i, doc in enumerate(docs):
+                    st.markdown(f"**Source {i+1}**")
+                    st.write(doc.page_content)
+                    st.divider()
             st.session_state.chat_history.append(("User", user_question))
             st.session_state.chat_history.append(("Bot", response))
         else:
@@ -69,12 +68,33 @@ def main():
                 all_files.extend(static_files)
 
             if all_files:
-                with st.spinner("Processing..."):
-                    raw_text = get_pdf_text(all_files)
+                with st.spinner("Processing & Saving Permanently..."):
+                    # 1. Save uploaded files to disk
+                    if not os.path.exists("data"):
+                        os.makedirs("data")
+                    
+                    saved_files = []
+                    # Handle static files (already path strings)
+                    for f in static_files:
+                        saved_files.append(f)
+
+                    # Handle uploaded files (Streamlit UploadedFile objects)
+                    if pdf_docs:
+                        for uploaded_file in pdf_docs:
+                            save_path = os.path.join("data", uploaded_file.name)
+                            with open(save_path, "wb") as f:
+                                f.write(uploaded_file.getbuffer())
+                            saved_files.append(save_path)
+
+                    # 2. Process all files (both old and new)
+                    raw_text = get_pdf_text(saved_files)
                     text_chunks = get_text_chunks(raw_text)
-                    vector_store = get_vector_store(text_chunks)
+                    
+                    # 3. Save to Permanent DB
+                    vector_store = get_vector_store(text_chunks, persist_directory="chroma_db_final")
+                    
                     st.session_state.vector_store = vector_store
-                    st.success("Done")
+                    st.success("Done! Files saved to 'data/' and added to Permanent Database.")
             else:
                 st.warning("Please upload at least one PDF file or add files to the 'data/' folder.")
 
