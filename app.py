@@ -5,8 +5,11 @@ import os
 
 load_dotenv()
 
-if "GOOGLE_API_KEY" in st.secrets:
-    os.environ["GOOGLE_API_KEY"] = st.secrets["GOOGLE_API_KEY"]
+try:
+    if "GOOGLE_API_KEY" in st.secrets:
+        os.environ["GOOGLE_API_KEY"] = st.secrets["GOOGLE_API_KEY"]
+except:
+    pass
 
 def main():
     st.set_page_config("RAGdocQA")
